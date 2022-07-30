@@ -1,0 +1,845 @@
+#!/bin/bash
+
+# Installation script for minimal desktop environment.
+
+# TODO: Check return values (https://google.github.io/styleguide/shellguide.html#s8.1-checking-return-values)!
+
+if ! sudo true; then
+  exit 1
+fi
+
+sudo dpkg-reconfigure tzdata
+
+sudo apt-get update
+sudo apt-get --yes upgrade
+
+PACKAGES=(
+  bc
+  fbpanel
+  feh
+  file
+  firefox-esr
+  gawk
+  git
+  numix-gtk-theme
+  numix-icon-theme
+  onboard
+  openbox
+  rpd-wallpaper
+  scrot
+  vim
+  xorg
+  xterm
+)
+sudo apt-get --yes install "${PACKAGES[@]}"
+
+sudo apt-get --yes autoremove
+sudo apt-get --yes autoclean
+
+sudo mkdir --parents "/usr/share/fonts/opentype/"
+sudo git clone --branch release --depth 1 https://github.com/adobe-fonts/source-code-pro.git "/usr/share/fonts/opentype/source-code-pro"
+sudo git clone --branch release --depth 1 https://github.com/adobe-fonts/source-sans.git "/usr/share/fonts/opentype/source-sans"
+sudo git clone --branch release --depth 1 https://github.com/adobe-fonts/source-serif.git "/usr/share/fonts/opentype/source-serif"
+sudo fc-cache -f -v "/usr/share/fonts/opentype/"
+
+sudo tee /etc/vimrc <<- EOF
+	runtime! archlinux.vim
+	let skip_defaults_vim=1
+	set expandtab
+	set ignorecase
+	set smartcase
+	set shiftwidth=4
+	set softtabstop=4
+	set tabstop=4
+	syntax on
+EOF
+sudo update-alternatives --set editor /usr/bin/vim.basic
+
+sudo tee /etc/X11/xorg.conf.d/90-default.conf <<-EOF
+	Section "ServerFlags"
+	    Option "DontVTSwitch" "true"
+	EndSection
+
+	Section "ServerLayout"
+	    Identifier "Display off"
+	    Option "StandbyTime" "0"
+	    Option "SuspendTime" "0"
+	    Option "OffTime" "0"
+	    Option "BlankTime" "0"
+	EndSection
+EOF
+
+sudo mkdir --parents /etc/gtk-2.0/
+sudo tee /etc/gtk-2.0/gtkrc <<-EOF
+	gtk-theme-name = "Numix"
+	gtk-icon-theme-name = "Numix"
+	gtk-font-name = "Source Sans 3 12"
+EOF
+sudo mkdir --parents /etc/gtk-3.0/
+sudo tee /etc/gtk-3.0/settings.ini <<-EOF
+	[Settings]
+	gtk-theme-name = Numix
+	gtk-icon-theme-name = Numix
+	gtk-font-name = Source Sans 3 12
+EOF
+
+mkdir --parents "${HOME}/.config/openbox/"
+tee "${HOME}/.config/openbox/autostart" <<-EOF
+	xrandr --auto
+	feh --bg-scale /usr/share/rpd-wallpaper/sand.jpg
+	fbpanel &
+	onboard &
+EOF
+tee "${HOME}/.config/openbox/menu.xml" <<-EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<openbox_menu>
+	  <menu id="desktop" label="Auf zum Atem!">
+	    <item label="Terminal">
+	      <action name="Execute"><command>xterm</command></action>
+	    </item>
+	  </menu>
+	</openbox_menu>
+EOF
+tee "${HOME}/.config/openbox/rc.xml" <<-EOF
+	<?xml version="1.0" encoding="UTF-8"?>
+	<openbox_config>
+	  <theme>
+	    <name>Numix</name>
+	    <font place="ActiveWindow">
+	      <name>Source Sans 3</name>
+	      <size>14</size>
+	      <weight>Bold</weight>
+	    </font>
+	    <font place="InactiveWindow">
+	      <name>Source Sans 3</name>
+	      <size>14</size>
+	      <weight>Bold</weight>
+	    </font>
+	    <font place="MenuHeader">
+	      <name>Source Sans 3</name>
+	      <size>16</size>
+	      <weight>Normal</weight>
+	    </font>
+	    <font place="MenuItem">
+	      <name>Source Sans 3</name>
+	      <size>16</size>
+	      <weight>Normal</weight>
+	    </font>
+	    <titleLayout>LIMC</titleLayout>
+	  </theme>
+	  <desktops>
+	    <number>1</number>
+	    <firstdesk>1</firstdesk>
+	    <names>
+	      <name>Auf zum Atem!</name>
+	    </names>
+	  </desktops>
+	  <keyboard>
+	    <keybind key="W-Return">
+	      <action name="Execute"><command>xterm</command></action>
+	    </keybind>
+	    <keybind key="W-Up">
+	      <action name="Maximize"/>
+	    </keybind>
+	    <keybind key="W-Down">
+	      <action name="Unmaximize"/>
+	    </keybind>
+	    <keybind key="W-Left">
+	      <action name="Unmaximize"/>
+	      <action name="MoveResizeTo">
+	        <x>0</x>
+	        <y>0</y>
+	        <height>100%</height>
+	        <width>50%</width>
+	      </action>
+	    </keybind>
+	    <keybind key="W-Right">
+	      <action name="Unmaximize"/>
+	      <action name="MoveResizeTo">
+	        <x>-0</x>
+	        <y>0</y>
+	        <height>100%</height>
+	        <width>50%</width>
+	      </action>
+	    </keybind>
+	    <keybind key="Print">
+	      <action name="Execute"><command>scrot "%Y-%m-%d-%H-%M-%S.png"</command></action>
+	    </keybind>
+	  </keyboard>
+	  <mouse>
+	    <context name="Root">
+	      <mousebind button="Right" action="Press">
+	        <action name="ShowMenu">
+	          <menu>desktop</menu>
+	        </action>
+	      </mousebind>
+	    </context>
+	    <context name="Titlebar">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Drag">
+	        <action name="Move"/>
+	      </mousebind>
+	      <mousebind button="Left" action="DoubleClick">
+	        <action name="ToggleMaximize"/>
+	      </mousebind>
+	    </context>
+	    <context name="Top">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Drag">
+	        <action name="Resize"><edge>top</edge></action>
+	      </mousebind>
+	    </context>
+	    <context name="Left">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Drag">
+	        <action name="Resize"><edge>left</edge></action>
+	      </mousebind>
+	    </context>
+	    <context name="Right">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Drag">
+	        <action name="Resize"><edge>right</edge></action>
+	      </mousebind>
+	    </context>
+	    <context name="Bottom">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Drag">
+	        <action name="Resize"><edge>bottom</edge></action>
+	      </mousebind>
+	    </context>
+	    <context name="TRCorner BRCorner TLCorner BLCorner">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Drag">
+	        <action name="Resize"/>
+	      </mousebind>
+	    </context>
+	    <context name="Iconify">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Click">
+	        <action name="Iconify"/>
+	      </mousebind>
+	    </context>
+	    <context name="Maximize">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Click">
+	        <action name="ToggleMaximize"/>
+	      </mousebind>
+	    </context>
+	    <context name="Close">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Left" action="Click">
+	        <action name="Close"/>
+	      </mousebind>
+	    </context>
+	    <context name="Client">
+	      <mousebind button="Left" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Middle" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	      <mousebind button="Right" action="Press">
+	        <action name="Focus"/>
+	        <action name="Raise"/>
+	      </mousebind>
+	    </context>
+	  </mouse>
+	  <applications>
+	    <application class="Firefox*">
+	      <decor>no</decor>
+	     </application>
+	  </applications>
+	</openbox_config>
+EOF
+
+mkdir --parents "${HOME}/.config/fbpanel/"
+tee "${HOME}/.config/fbpanel/default" <<-EOF
+	Global {
+	    allign = center
+	    autohide = false
+	    edge = bottom
+	    roundcorners = false
+	    setdocktype = true
+	    setpartialstrut = true
+	    transparent = false
+	}
+
+	Plugin {
+	    type = menu
+	    config {
+	        iconsize = 32
+	        icon = open-menu-symbolic
+	        item {
+	            name = Firefox
+	            icon = firefox-esr
+	            action = firefox-esr
+	        }
+	        item {
+	            name = Terminal
+	            icon = terminal
+	            action = xterm
+	        }
+	        separator {
+	        }
+	        item {
+	            name = Reboot
+	            icon = gnome-session-reboot
+	            action = sudo reboot
+	        }
+	        item {
+	            name = Shutdown
+	            icon = gnome-session-halt
+	            action = sudo shutdown -h now
+	        }
+	    }
+	}
+
+	Plugin {
+	    type = taskbar
+	    expand = true
+	    config {
+	        showmapped    = true
+	        showalldesks  = true
+	        tooltips = false
+	        iconsonly = false
+	        maxtaskwidth = 200
+	    }
+	}
+
+	Plugin {
+	    type = tclock
+	    config {
+	        ClockFmt = %R
+	        ShowCalendar = false
+	        ShowTooltip = false
+	    }
+	}
+EOF
+
+mkdir --parents "${HOME}/.config/onboard/"
+tee "${HOME}/.config/onboard/onboard-defaults.conf" <<-EOF
+	[main]
+	layout=Flat
+	theme=Flat
+	show-status-icon=False
+	show-tooltips=False
+	start-minimized=True
+
+	[window]
+	force-to-top=True
+
+	[window.landscape]
+	height=380
+	width=1200
+
+	[icon-palette]
+	in-use=True
+
+	[icon-palette.landscape]
+	height=100
+	width=100
+EOF
+
+mkdir --parents "${HOME}/.local/share/onboard/layouts/"
+tee "${HOME}/.local/share/onboard/layouts/Flat.onboard" <<-EOF
+	<?xml version="1.0" encoding="utf-8"?>
+	<keyboard format="3.2" id="Flat" section="system" summary="Auf zum Atem!">
+	  <box border="0.5" orientation="vertical" spacing="1.5">
+	    <box>
+	      <panel>
+	        <panel filename="/usr/share/onboard/layouts/Small-Alpha.svg" layer="letters">
+	          <key action="single-stroke" group="label" id="ESC" keycode="9" label="Escape"/>
+	          <key group="default" id="AD01" keycode="24"/>
+	          <key group="default" id="AD02" keycode="25"/>
+	          <key group="default" id="AD03" keycode="26"/>
+	          <key group="default" id="AD04" keycode="27"/>
+	          <key group="default" id="AD05" keycode="28"/>
+	          <key group="default" id="AD06" keycode="29"/>
+	          <key group="default" id="AD07" keycode="30"/>
+	          <key group="default" id="AD08" keycode="31"/>
+	          <key group="default" id="AD09" keycode="32"/>
+	          <key group="default" id="AD10" keycode="33"/>
+	          <key action="single-stroke" group="label" id="BKSP" keycode="22" label="Backspace"/>
+	          <key action="single-stroke" group="label" id="TAB" keycode="23" label="Tab"/>
+	          <key group="default" id="AC01" keycode="38"/>
+	          <key group="default" id="AC02" keycode="39"/>
+	          <key group="default" id="AC03" keycode="40"/>
+	          <key group="default" id="AC04" keycode="41"/>
+	          <key group="default" id="AC05" keycode="42"/>
+	          <key group="default" id="AC06" keycode="43"/>
+	          <key group="default" id="AC07" keycode="44"/>
+	          <key group="default" id="AC08" keycode="45"/>
+	          <key group="default" id="AC09" keycode="46"/>
+	          <key group="default" id="AC10" keysym="0x100002F" label="/"/>
+	          <key action="single-stroke" group="label" id="DELE" keycode="119" label="Delete"/>
+	          <key action="single-stroke" group="label" id="LFSH" keycode="62" label="Shift" modifier="shift" sticky="true"/>
+	          <key group="default" id="AB01" keycode="52"/>
+	          <key group="default" id="AB02" keycode="53"/>
+	          <key group="default" id="AB03" keycode="54"/>
+	          <key group="default" id="AB04" keycode="55"/>
+	          <key group="default" id="AB05" keycode="56"/>
+	          <key group="default" id="AB06" keycode="57"/>
+	          <key group="default" id="AB07" keycode="58"/>
+	          <key group="default" id="AB08" keysym="0x100002E" label="."/>
+	          <key group="default" id="AB09" keysym="0x100003A" label=":"/>
+	          <key action="single-stroke" group="label" id="RTRN" keycode="36" label="Return"/>
+	          <key action="single-stroke" group="label" id="LCTL" keycode="37" label="Control" modifier="control" sticky="true"/>
+	          <key action="single-stroke" group="label" id="LWIN" keycode="133" label="Super" modifier="mod4" sticky="true"/>
+	          <key action="single-stroke" group="label" id="LALT" keycode="64" label="Alt" modifier="mod1" sticky="true"/>
+	          <key button="true" group="label" id="layer1" label="..."/>
+	          <key group="label" id="SPCE" keycode="65"/>
+	          <key action="single-stroke" group="default" id="LEFT" keycode="113" label="←"/>
+	          <key action="single-stroke" group="default" id="RGHT" keycode="114" label="→"/>
+	          <key action="single-stroke" group="default" id="UP" keycode="111" label="↑"/>
+	          <key action="single-stroke" group="default" id="DOWN" keycode="116" label="↓"/>
+	        </panel>
+
+	        <panel filename="/usr/share/onboard/layouts/Small-Alpha.svg" layer="numbers">
+	          <key action="single-stroke" group="label" id="ESC" keycode="9" label="Escape"/>
+	          <key group="default" id="AD01" keysym="0x1000031" label="1"/>
+	          <key group="default" id="AD02" keysym="0x1000032" label="2"/>
+	          <key group="default" id="AD03" keysym="0x1000033" label="3"/>
+	          <key group="default" id="AD04" keysym="0x1000034" label="4"/>
+	          <key group="default" id="AD05" keysym="0x1000035" label="5"/>
+	          <key group="default" id="AD06" keysym="0x1000036" label="6"/>
+	          <key group="default" id="AD07" keysym="0x1000037" label="7"/>
+	          <key group="default" id="AD08" keysym="0x1000038" label="8"/>
+	          <key group="default" id="AD09" keysym="0x1000039" label="9"/>
+	          <key group="default" id="AD10" keysym="0x1000030" label="0"/>
+	          <key action="single-stroke" group="label" id="BKSP" keycode="22" label="Backspace"/>
+	          <key action="single-stroke" group="label" id="PRINT" keycode="107" label="Print" svg_id="TAB"/>jj
+	          <key group="default" id="AC01" keysym="0x1000023" label="#"/>
+	          <key group="default" id="AC02" keysym="0x1000025" label="%"/>
+	          <key group="default" id="AC03" keysym="0x100002B" label="+"/>
+	          <key group="default" id="AC04" keysym="0x100002D" label="-"/>
+	          <key group="default" id="AC05" keysym="0x100003D" label="="/>
+	          <key group="default" id="AC06" keysym="0x100002A" label="*"/>
+	          <key group="default" id="AC07" keysym="0x1000022" label="&quot;"/>
+	          <key group="default" id="AC08" keysym="0x100005C" label="\\"/>
+	          <key group="default" id="AC09" keysym="0x1000028" label="("/>
+	          <key group="default" id="AC10" keysym="0x1000029" label=")"/>
+	          <key action="single-stroke" group="label" id="DELE" keycode="119" label="Delete"/>
+	          <key button="true" group="label" id="settings" label="Settings" svg_id="LFSH"/>
+	          <key group="default" id="AB01" keysym="0x1000040" label="@"/>
+	          <key group="default" id="AB02" keysym="0x1000026" label="&amp;"/>
+	          <key group="default" id="AB03" keysym="0x100003F" label="?"/>
+	          <key group="default" id="AB04" keysym="0x1000021" label="!"/>
+	          <key group="default" id="AB05" keysym="0x1000024" label="\$"/>
+	          <key group="default" id="AB06" keysym="0x10020AC" label="€"/>
+	          <key group="default" id="AB07" keysym="0x100002C" label=","/>
+	          <key group="default" id="AB08" keysym="0x100003B" label=";"/>
+	          <key group="default" id="AB09" keysym="0x100007C" label="|"/>
+	          <key action="single-stroke" group="label" id="RTRN" keycode="36" label="Return"/>
+	          <key button="true" group="label" id="hide" label="Exit" svg_id="LCTL"/>
+	          <key button="true" group="label" id="move" label="Move" svg_id="LWIN"/>
+	          <key button="true" group="label" id="layer2" label="Symbols" svg_id="LALT"/>
+	          <key button="true" group="label" id="layer1" label="..."/>
+	          <key group="label" id="SPCE" keycode="65"/>
+	          <key action="single-stroke" group="label" id="HOME" keycode="110" label="Home" svg_id="LEFT"/>
+	          <key action="single-stroke" group="label" id="END" keycode="115" label="End" svg_id="RGHT"/>
+	          <key action="single-stroke" group="label" id="PGUP" keycode="112" label="Up" svg_id="UP"/>
+	          <key action="single-stroke" group="label" id="PGDN" keycode="117" label="Down" svg_id="DOWN"/>
+	        </panel>
+
+	        <panel filename="/usr/share/onboard/layouts/Small-Alpha.svg" layer="symbols">
+	          <key action="single-stroke" group="label" id="ESC" keycode="9" label="Escape"/>
+	          <key group="default" id="AD01" keysym="0x100007B" label="{"/>
+	          <key group="default" id="AD02" keysym="0x100007D" label="}"/>
+	          <key group="default" id="AD03" keysym="0x100005B" label="["/>
+	          <key group="default" id="AD04" keysym="0x100005D" label="]"/>
+	          <key group="default" id="F1" keycode="67" label="F1" svg_id="AD05"/>
+	          <key group="default" id="F2" keycode="68" label="F2" svg_id="AD06"/>
+	          <key group="default" id="F3" keycode="69" label="F3" svg_id="AD07"/>
+	          <key group="default" id="F4" keycode="70" label="F4" svg_id="AD08"/>
+	          <key group="default" id="F5" keycode="71" label="F5" svg_id="AD09"/>
+	          <key group="default" id="F6" keycode="72" label="F6" svg_id="AD10"/>
+	          <key action="single-stroke" group="label" id="BKSP" keycode="22" label="Backspace"/>
+	          <key action="single-stroke" group="label" id="PRINT" keycode="107" label="Print" svg_id="TAB"/>
+	          <key group="default" id="AC01" keysym="0x100005F" label="_"/>
+	          <key group="default" id="AC02" keysym="0x100005E" label="^"/>
+	          <key group="default" id="AC03" keysym="0x100003C" label="&lt;"/>
+	          <key group="default" id="AC04" keysym="0x100003E" label="&gt;"/>
+	          <key group="default" id="F7" keycode="73" label="F7" svg_id="AC05"/>
+	          <key group="default" id="F8" keycode="74" label="F8" svg_id="AC06"/>
+	          <key group="default" id="F9" keycode="75" label="F9" svg_id="AC07"/>
+	          <key group="default" id="F10" keycode="76" label="F10" svg_id="AC08"/>
+	          <key group="default" id="F11" keycode="95" label="F11" svg_id="AC09"/>
+	          <key group="default" id="F12" keycode="96" label="F12" svg_id="AC10"/>
+	          <key action="single-stroke" group="label" id="DELE" keycode="119" label="Delete"/>
+	          <key button="true" group="label" id="settings" label="Settings" svg_id="LFSH"/>
+	          <key group="default" id="AB01" keysym="0x1000027" label="'"/>
+	          <key group="default" id="AB02" keysym="0x1000060" label="\`"/>
+	          <key group="default" id="AB03" keysym="0x100007E" label="~"/>
+	          <key group="default" id="AB04" keysym="0x1002190" label="←"/>
+	          <key group="default" id="AB05" keysym="0x1002192" label="→"/>
+	          <key group="default" id="AB06" keysym="0x1002191" label="↑"/>
+	          <key group="default" id="AB07" keysym="0x1002193" label="↓"/>
+	          <key group="default" id="AB08" keysym="0x1002194" label="↔"/>
+	          <key group="default" id="AB09" keysym="0x1002195" label="↕"/>
+	          <key action="single-stroke" group="label" id="RTRN" keycode="36" label="Return"/>
+	          <key button="true" group="label" id="hide" label="Exit" svg_id="LCTL"/>
+	          <key button="true" group="label" id="move" label="Move" svg_id="LWIN"/>
+	          <key button="true" group="label" id="layer2" label="Symbols" svg_id="LALT"/>
+	          <key button="true" group="label" id="layer1" label="..."/>
+	          <key group="label" id="SPCE" keycode="65"/>
+	          <key action="single-stroke" group="label" id="HOME" keycode="110" label="Home" svg_id="LEFT"/>
+	          <key action="single-stroke" group="label" id="END" keycode="115" label="End" svg_id="RGHT"/>
+	          <key action="single-stroke" group="label" id="PGUP" keycode="112" label="Up" svg_id="UP"/>
+	          <key action="single-stroke" group="label" id="PGDN" keycode="117" label="Down" svg_id="DOWN"/>
+	        </panel>
+	      </panel>
+	    </box>
+	  </box>
+	</keyboard>
+EOF
+
+mkdir --parents "${HOME}/.local/share/onboard/themes/"
+tee "${HOME}/.local/share/onboard/themes/Flat.colors" <<-EOF
+	<?xml version="1.0" encoding="utf-8"?>
+	<color_scheme format="2.1" name="Flat">
+	  <icon>
+	    <color element="background" rgb="#464646"/>
+	    <key_group>
+	      <color element="fill" rgb="#2AA198"/>
+	      <color element="stroke" rgb="#2AA198"/>
+	      <color element="label" rgb="#F7F7F7"/>
+	      icon0
+	    </key_group>
+	    <key_group>
+	      <color element="fill" rgb="#6F6F6F"/>
+	      <color element="stroke" rgb="#6F6F6F"/>
+	      icon1
+	    </key_group>
+	    <key_group>
+	      <color element="fill" rgb="#A6E22C"/>
+	      <color element="stroke" rgb="#A6E22C"/>
+	      icon2
+	    </key_group>
+	    <key_group>
+	      <color element="fill" rgb="#66D9EF"/>
+	      <color element="stroke" rgb="#66D9EF"/>
+	      <color element="label" rgb="#F7F7F7"/>
+	      icon3
+	    </key_group>
+	  </icon>
+
+	  <layer>
+	    <color element="background" rgb="#464646"/>
+	  </layer>
+
+	  <key_group>
+	    <color active="true" element="fill" locked="true" pressed="true" rgb="#F92672"/>
+	    <color active="true" element="fill" locked="false" pressed="true" rgb="#CECECE"/>
+	    <color active="true" element="fill" locked="true" pressed="false" rgb="#F92672"/>
+	    <color active="true" element="fill" locked="false" pressed="false" rgb="#CECECE"/>
+	    <color active="false" element="fill" locked="true" pressed="true" rgb="#F92672"/>
+	    <color active="false" element="fill" locked="false" pressed="true" rgb="#CECECE"/>
+	    <color active="false" element="fill" locked="true" pressed="false" rgb="#F92672"/>
+	    <color active="false" element="fill" locked="false" pressed="false" rgb="#6F6F6F"/>
+
+	    <color element="stroke" rgb="#F7F7F7"/>
+
+	    <color active="true" element="label" locked="true" pressed="true" rgb="#F7F7F7"/>
+	    <color active="true" element="label" locked="false" pressed="true" rgb="#F7F7F7"/>
+	    <color active="true" element="label" locked="true" pressed="false" rgb="#F7F7F7"/>
+	    <color active="true" element="label" locked="false" pressed="false" rgb="#F7F7F7"/>
+	    <color active="false" element="label" locked="true" pressed="true" rgb="#F7F7F7"/>
+	    <color active="false" element="label" locked="false" pressed="true" rgb="#F7F7F7"/>
+	    <color active="false" element="label" locked="true" pressed="false" rgb="#F7F7F7"/>
+	    <color active="false" element="label" locked="false" pressed="false" rgb="#F7F7F7"/>
+
+	    <color element="dwell-progress" rgb="#F92672"/>
+
+	    <key_group>
+	      <color element="fill" rgb="#A6E22C"/>
+	      LCTL, LALT, LWIN, LFSH
+	    </key_group>
+	    <key_group>
+	      <color element="fill" rgb="#66D9EF"/>
+	      BKSP, TAB, RTRN, LEFT, RGHT, UP, DOWN, DELE, HOME, END, PGUP, PGDN, PRINT
+	    </key_group>
+	    <key_group>
+	      <color element="fill" rgb="#AC80FF"/>
+	      F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
+	    </key_group>
+	    <key_group>
+	      <color element="fill" rgb="#2AA198"/>
+	      ESC, hide, move, settings
+	    </key_group>
+	    <key_group>
+	      <color active="true" element="fill" locked="true" pressed="true" rgb="#F92672"/>
+	      <color active="true" element="fill" locked="false" pressed="true" rgb="#6F6F6F"/>
+	      <color active="true" element="fill" locked="true" pressed="false" rgb="#F92672"/>
+	      <color active="true" element="fill" locked="false" pressed="false" rgb="#6F6F6F"/>
+	      <color active="false" element="fill" locked="true" pressed="true" rgb="#F92672"/>
+	      <color active="false" element="fill" locked="false" pressed="true" rgb="#464646"/>
+	      <color active="false" element="fill" locked="true" pressed="false" rgb="#F92672"/>
+	      <color active="false" element="fill" locked="false" pressed="false" rgb="#464646"/>
+	      layer
+	    </key_group>
+	  </key_group>
+	</color_scheme>
+EOF
+tee "${HOME}/.local/share/onboard/themes/Flat.theme" <<-EOF
+	<?xml version="1.0" encoding="utf-8"?>
+	<theme format="1.3" name="Flat">
+	  <color_scheme>Flat</color_scheme>
+	  <background_gradient>0.0</background_gradient>
+	  <key_style>flat</key_style>
+	  <roundrect_radius>0.0</roundrect_radius>
+	  <key_size>100.0</key_size>
+	  <key_stroke_width>0.0</key_stroke_width>
+	  <key_fill_gradient>0.0</key_fill_gradient>
+	  <key_stroke_gradient>0.0</key_stroke_gradient>
+	  <key_gradient_direction>0.0</key_gradient_direction>
+	  <key_label_font>Source Sans 3 Light</key_label_font>
+	  <key_shadow_strength>0.0</key_shadow_strength>
+	  <key_shadow_size>0.0</key_shadow_size>
+	</theme>
+EOF
+
+mkdir --parents "${HOME}/.local/share/icons/"
+tee "${HOME}/.local/share/icons/terminal.xpm" <<-EOF
+	/* XPM */
+	static char *terminal[] = {
+	/* columns rows colors chars-per-pixel */
+	"32 32 62 1 ",
+	"  c #000000",
+	". c #0B0D0C",
+	"X c #131616",
+	"o c #151817",
+	"O c #161919",
+	"+ c #1A1C1B",
+	"@ c #1C201F",
+	"# c #1E2221",
+	"$ c #232625",
+	"% c #232826",
+	"& c #262B2A",
+	"* c #2A2D2C",
+	"= c #2A312F",
+	"- c #2E3532",
+	"; c #323534",
+	": c #313836",
+	"> c #353D3A",
+	", c #3C3E3C",
+	"< c #37403D",
+	"1 c #3B413F",
+	"2 c #41433F",
+	"3 c #3D4542",
+	"4 c #3E4845",
+	"5 c #434543",
+	"6 c #434946",
+	"7 c #484A46",
+	"8 c #434D4A",
+	"9 c #4B4D4A",
+	"0 c #46524E",
+	"q c #4B524E",
+	"w c #51534E",
+	"e c #4B5552",
+	"r c #4E5A55",
+	"t c #525553",
+	"y c #535855",
+	"u c #5A5C56",
+	"i c #545C5A",
+	"p c #5A5D5B",
+	"a c #55625D",
+	"s c #5C615D",
+	"d c #61635D",
+	"f c #566460",
+	"g c #5B6461",
+	"h c #636562",
+	"j c #6D6E6D",
+	"k c #707170",
+	"l c #868686",
+	"z c #898B89",
+	"x c #9F9F9F",
+	"c c #9DA09F",
+	"v c #A0A0A0",
+	"b c #B4B5B5",
+	"n c #B9BABA",
+	"m c #C6C6C6",
+	"M c #CBCBCB",
+	"N c #D3D3D3",
+	"B c #DCDCDC",
+	"V c #E3E3E3",
+	"C c #EBEBEB",
+	"Z c #F4F4F4",
+	"A c #FBFBFB",
+	"S c None",
+	/* pixels */
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"SShdddddhdddddddhdddddddddddhSSS",
+	"ShzxxxxxxxxxxxxxxxxxxxxxxxxxzhSS",
+	"SdNNNBBVVCCCZZAAAAZZCCCVVBBNNdSS",
+	"SdMXoXXXXXOXXO+O+oOOO+++++XXNdSS",
+	"SsMX   . ....;pt9*..\$95,*\$OXNuSS",
+	"SpMXXv+++++@@ehpt*##tpq5,;\$XMuSS",
+	"SuMo.*nXXo+++tpy5++;pt7,;*@XNuSS",
+	"SuMX+b1\$\$&&**hhp5**phte6,;*XMuSS",
+	"SuMXXO+@#$%%-pit*&1pyq6<;&\$XMuSS",
+	"SyMX$&*zcc:>6gge>1ggptq5,;\$XMtSS",
+	"StMX@#%7ey--6iy4>4ite85>-%+OMwSS",
+	"SwMX*=::,<33rsi88ggpy963:-*oMwSS",
+	"SqmX#&=-><<3eee40it044<-=&%XM9SS",
+	"SqMX::><444eiariaaite441<:-XM0SS",
+	"Sqmo&=:><3440errre0444<>:=&XM9SS",
+	"S7mX:<<3400raaffffiir444<<:XMqSS",
+	"S9mX==:<344eeraffre444<<--*Xm9SS",
+	"S7mX-<<444eriaffffaiee441>:Xm6SS",
+	"S5mX&=-><44400ee04e444<:--&Xm6SS",
+	"S5mX--<<344000eeeee4444<::-Om5SS",
+	"S5mXX+OOoo+ooo+Ooo+oo+ooOOOOm2SS",
+	"S2mmmmmmmmmmmmmmmmmmmmmmmmmmm3SS",
+	"S2jlllllllllzlllllllllllllllk2SS",
+	"S+,,,,,,,,,,,,,,,,,,,,,,,,,,,+SS",
+	"SS                            SS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS",
+	"SSSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"
+	};
+EOF
+tee "${HOME}/.Xresources" <<-EOF
+	Xft.dpi: 96
+	XTerm.termName: xterm
+	XTerm.title: Terminal
+	XTerm.iconHint: ${HOME}/.local/share/icons/terminal
+	XTerm.VT100.faceName: Source Code Pro
+	XTerm.VT100.faceSize: 18
+	XTerm.VT100.allowBoldFonts: false
+	XTerm.VT100.background: rgb:28/28/28
+	XTerm.VT100.foreground: rgb:f7/f7/f7
+	XTerm.VT100.color0: rgb:6f/6f/6f
+	XTerm.VT100.color1: rgb:f9/24/72
+	XTerm.VT100.color2: rgb:a6/e2/2c
+	XTerm.VT100.color3: rgb:e7/db/74
+	XTerm.VT100.color4: rgb:67/d8/ef
+	XTerm.VT100.color5: rgb:ac/80/ff
+	XTerm.VT100.color6: rgb:2a/a1/98
+	XTerm.VT100.color7: rgb:f8/f8/f8
+	XTerm.VT100.color8: rgb:28/28/28
+	XTerm.VT100.color9: rgb:f9/24/72
+	XTerm.VT100.color10: rgb:a6/e2/2c
+	XTerm.VT100.color11: rgb:e7/db/74
+	XTerm.VT100.color12: rgb:67/d8/ef
+	XTerm.VT100.color13: rgb:ac/80/ff
+	XTerm.VT100.color14: rgb:2a/a1/98
+	XTerm.VT100.color15: rgb:f7/f7/f7
+	XTerm.VT100.alternateScroll: true
+	XTerm.VT100.fastScroll: true
+	XTerm.VT100.jumpScroll: true
+	XTerm.VT100.multiScroll: true
+	XTerm.VT100.on2Clicks: regex (https?:)?[a-zA-Z0-9$%&/()?@~*+#,._-]+
+	XTerm.VT100.on3Clicks: line
+	XTerm.VT100.saveLines: 16384
+	XTerm.VT100.translations: #override \\n\\
+	    Shift Ctrl <Key> c: copy-selection(CLIPBOARD) \\n\\
+	    Shift Ctrl <Key> v: insert-selection(CLIPBOARD)
+EOF
+
+tee "${HOME}/.xinitrc" <<-EOF
+	xrdb -merge "\${HOME}/.Xresources"
+	exec /usr/bin/openbox-session > /dev/null 2>&1
+EOF
+
+tee "${HOME}/.bash_profile" <<- EOF
+	if [[ -n "\${BASH_VERSION}" && -f "\${HOME}/.bashrc" ]]; then
+	    source "\${HOME}/.bashrc"
+	fi
+	if [[ -z "\${DISPLAY}" && "\${XDG_VTNR}" -eq 1 ]]; then
+	    exec startx
+	fi
+EOF
+
+tee "${HOME}/.bashrc" <<- EOF
+	if [[ "\$-" = *i* ]]; then
+	  if [[ -z "\${SSH_CLIENT:+substitution}" ]]; then
+	    PS1="\[\e[32m\]\u@\h\[\e[m\]:\[\e[34m\]\w\[\e[m\]\\\$ "
+	  else
+	    PS1="\[\e[31m\]\u@\h\[\e[m\]:\[\e[34m\]\w\[\e[m\]\\\$ "
+	  fi
+
+	  export EDITOR="vim"
+	  export PAGER="less"
+	  export SYSTEMD_PAGER="cat"
+
+	  alias sudo="sudo --preserve-env=EDITOR,PAGER,SYSTEMD_PAGER"
+
+	  HISTCONTROL="ignoreboth"
+	  HISTFILE="\${HOME}/.bash_history"
+	  HISTFILESIZE="-1"
+	  HISTSIZE="-1"
+	  HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S "
+
+	  shopt -s autocd
+	  shopt -s checkwinsize
+	  shopt -s globstar
+	  shopt -s histappend
+	  tabs 4
+
+	  eval "\$(dircolors -b)"
+
+	  alias bc="/usr/bin/bc --mathlib"
+	  alias diff="/usr/bin/diff --color=auto"
+	  alias grep="/usr/bin/grep --color=auto"
+	  alias ip="/usr/bin/ip -color=auto"
+	  alias less="/usr/bin/less --ignore-case"
+	  alias ls="/usr/bin/ls --color=auto --group-directories-first"
+
+	  for command in poweroff reboot suspend hibernate; do
+	    alias "\${command}"="/usr/bin/systemctl \${command}"
+	  done
+
+	  function toogle_history() {
+	    if [[ -z "\${HISTFILE:+substitution}" ]]; then
+	      HISTFILE="\${HOME}/.bash_history"
+	      printf "\e[30mHistory enabled\e[0m\n"
+	    else
+	      unset HISTFILE
+	      printf "\e[30mHistory disabled\e[0m\n"
+	    fi
+	  }
+	  bind -x '"\eh": toogle_history'
+
+	  if [[ -r /usr/share/bash-completion/bash_completion ]]; then
+	    . /usr/share/bash-completion/bash_completion
+	  fi
+	fi
+EOF
+
+tee "${HOME}/.bash_logout" <<- EOF
+EOF
+
+tee "${HOME}/.hushlogin" <<- EOF
+EOF
